@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/connexion.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="{{ url_for('static', filename='js/jscript.js') }}" defer></script>
+  <title>Connexion — ONDA Essaouira</title>
+</head>
+<body>
+  <div id="connexionContainer">
+    <div class="login-header">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ONDA" id="logo">
+      <div class="login-title">Connexion</div>
+      <div class="login-subtitle">Aéroport Essaouira Mogador</div>
+    </div>
+    <div class="login-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="error-msg" style="display:block;">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form id="connexion-form" action="{{ url_for('auth.login') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-user"></i> Nom d'utilisateur</label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-user"></i>
+            <input class="form-input" type="text" id="username" name="username" placeholder="Ex: TIJANI TARIK" required autocomplete="username">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label"><i class="fa-solid fa-key"></i> Mot de passe</label>
+          <div class="input-wrap">
+            <i class="input-icon fa-solid fa-lock"></i>
+            <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="toggle-pw" id="toggle-pw"><i class="fa-solid fa-eye-slash"></i></button>
+          </div>
+        </div>
+        <div class="remember-row">
+          <input class="toggle-sw" type="checkbox" id="remember-me" name="remember-me">
+          <label for="remember-me">Se souvenir de moi</label>
+        </div>
+        <button type="submit" class="btn-login"><i class="fa-solid fa-right-to-bracket" style="margin-right:8px;"></i>Se connecter</button>
+        <div class="login-footer">
+          <a href="{{ url_for('auth.forgot_password') }}" class="login-link"><i class="fa-solid fa-circle-question" style="margin-right:4px;"></i>Mot de passe oublié ?</a>
+          <a href="#" class="login-link"><i class="fa-solid fa-envelope" style="margin-right:4px;"></i>Nous contacter</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

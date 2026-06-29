@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+    volumes:
+      # Mount source code for live-reload in development
+      - ./app:/app/app
+      - ./run.py:/app/run.py
+    command: >
+      python run.py
+    restart: unless-stopped

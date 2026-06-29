@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs — ONDA Essaouira{% endblock %}
+
+{% block content %}
+<div class="page-title">Gestion des Utilisateurs</div>
+
+<div id="users-layout">
+  <!-- Users list -->
+  <div class="users-panel">
+    <div class="panel-toolbar">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="user-search" placeholder="Rechercher un utilisateur…">
+      </div>
+      <div style="font-size:12px;color:var(--white-dim);" id="user-count">{{ users|length }} utilisateur{{ 's' if users|length != 1 else '' }}</div>
+    </div>
+    <div id="users-container" style="overflow-y:auto;flex:1;">
+      {% if users %}
+        {% for u in users %}
+        <div class="user-card" data-name="{{ u.pseudo|lower }}" data-email="{{ (u.mail or '')|lower }}" data-service="{{ (u.service or '')|lower }}"
+             data-user='{{ {"id": u.id, "pseudo": u.pseudo, "mail": u.mail, "fonction": u.fonction, "service": u.service, "role": u.role, "privileges": (u.privileges or [])}|tojson }}'>
+          <div class="user-avatar">{{ u.initials }}</div>
+          <div class="user-info">
+            <div class="user-name">{{ u.pseudo }} <span class="role-badge {{ u.role }}">{{ 'Admin' if u.role == 'admin' else 'Utilisateur' }}</span></div>
+            <div class="user-meta">{{ u.fonction or '—' }} — {{ u.service or '—' }}</div>
+            <div style="margin-top:4px;">
+              {% for p in (u.privileges or []) %}
+                {% if p == 'download' %}<span style="font-size:10px;color:var(--blue-light);margin-right:4px;" title="Télécharger"><i class="fa-solid fa-download"></i></span>{% endif %}
+                {% if p == 'add' %}<span style="font-size:10px;color:var(--success);margin-right:4px;" title="Ajouter"><i class="fa-solid fa-plus"></i></span>{% endif %}
+                {% if p == 'delete' %}<span style="font-size:10px;color:var(--danger);margin-right:4px;" title="Supprimer"><i class="fa-solid fa-trash"></i></span>{% endif %}
+                {% if p == 'accessall' %}<span style="font-size:10px;color:var(--warning);margin-right:4px;" title="Accès total"><i class="fa-solid fa-eye"></i></span>{% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          <div class="user-actions">
+            <button type="button" class="btn-icon" title="Modifier" onclick="openEditUser(this)"><i class="fa-solid fa-pen"></i></button>
+            <form action="{{ url_for('users.delete_user', user_id=u.id) }}" method="post" onsubmit="return false;" class="delete-user-form" data-name="{{ u.pseudo }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="button" class="btn-icon danger" title="Supprimer" onclick="confirmDeleteUser(this)"><i class="fa-solid fa-trash"></i></button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state"><i class="fa-solid fa-users-slash"></i><p>Aucun utilisateur</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Add user form -->
+  <div class="add-user-panel">
+    <div class="panel-header"><i class="fa-solid fa-user-plus" style="margin-right:8px;"></i>Ajouter un utilisateur</div>
+    <div class="form-inner">
+      <form id="add-user-form" action="{{ url_for('users.add_user') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label><i class="fa-solid fa-user"></i> Pseudo</label>
+          <input class="form-control" type="text" id="pseudo" name="pseudo" placeholder="Ex: BENALI YOUSSEF" required>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-envelope"></i> Email</label>
+          <input class="form-control" type="email" id="email" name="email" placeholder="Ex: nom@onda.ma">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-briefcase"></i> Fonction</label>
+          <input class="form-control" type="text" id="function" name="function" placeholder="Ex: Contrôleur Aérien">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-people-group"></i> Service / Section</label>
+          <select class="form-control" id="service" name="service">
+            <option value="Service Technique navigation - CNS">STN - CNS</option>
+            <option value="Service Technique navigation - infrastructure & électricité">STN - Infrastructure & Électricité</option>
+            <option value="Service navigation - control aérien">SN - Contrôle Aérien</option>
+            <option value="Service navigation - SLIA">SN - SLIA</option>
+            <option value="Service SSQE">Service SSQE</option>
+            <option value="Service d'exploitation aéroportuaire">Service d'exploitation</option>
+            <option value="Section ressources">Section Ressources</option>
+            <option value="Direction">Direction</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-key"></i> Mot de passe</label>
+          <input class="form-control" type="password" id="password" name="password" placeholder="Mot de passe" required>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-key"></i> Confirmer le mot de passe</label>
+          <input class="form-control" type="password" id="confirm-password" name="confirm-password" placeholder="Confirmer" required>
+        </div>
+
+        <div class="form-group">
+          <label><i class="fa-solid fa-shield-halved"></i> Privilèges</label>
+          <div class="privileges-grid">
+            <label class="privilege-toggle">
+              <span class="priv-label"><i class="fa-solid fa-download" style="color:var(--blue-light);margin-right:4px;"></i>Télécharger</span>
+              <input class="toggle-sw" type="checkbox" name="privilege" value="download">
+            </label>
+            <label class="privilege-toggle">
+              <span class="priv-label"><i class="fa-solid fa-plus" style="color:var(--success);margin-right:4px;"></i>Ajouter</span>
+              <input class="toggle-sw" type="checkbox" name="privilege" value="add">
+            </label>
+            <label class="privilege-toggle">
+              <span class="priv-label"><i class="fa-solid fa-trash" style="color:var(--danger);margin-right:4px;"></i>Supprimer</span>
+              <input class="toggle-sw" type="checkbox" name="privilege" value="delete">
+            </label>
+            <label class="privilege-toggle">
+              <span class="priv-label"><i class="fa-solid fa-eye" style="color:var(--warning);margin-right:4px;"></i>Accès total</span>
+              <input class="toggle-sw" type="checkbox" name="privilege" value="accessall">
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label><i class="fa-solid fa-user-shield"></i> Type de compte</label>
+          <select class="form-control" id="account-type" name="account-type">
+            <option value="user">Utilisateur</option>
+            <option value="admin">Administrateur</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn-primary"><i class="fa-solid fa-user-plus" style="margin-right:8px;"></i>Ajouter l'utilisateur</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Edit user modal -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal('edit-modal')">
+  <div class="modal-box" style="width:460px;">
+    <div class="modal-title"><i class="fa-solid fa-user-pen" style="color:var(--blue-light);margin-right:8px;"></i>Modifier l'utilisateur</div>
+    <form id="edit-user-form" method="post" style="max-height:65vh;overflow-y:auto;padding-right:4px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label><i class="fa-solid fa-user"></i> Pseudo</label>
+        <input class="form-control" type="text" id="edit-pseudo" name="pseudo" required>
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-envelope"></i> Email</label>
+        <input class="form-control" type="email" id="edit-email" name="email">
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-briefcase"></i> Fonction</label>
+        <input class="form-control" type="text" id="edit-function" name="function">
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-people-group"></i> Service / Section</label>
+        <select class="form-control" id="edit-service" name="service">
+          <option value="Service Technique navigation - CNS">STN - CNS</option>
+          <option value="Service Technique navigation - infrastructure & électricité">STN - Infrastructure & Électricité</option>
+          <option value="Service navigation - control aérien">SN - Contrôle Aérien</option>
+          <option value="Service navigation - SLIA">SN - SLIA</option>
+          <option value="Service SSQE">Service SSQE</option>
+          <option value="Service d'exploitation aéroportuaire">Service d'exploitation</option>
+          <option value="Section ressources">Section Ressources</option>
+          <option value="Direction">Direction</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-key"></i> Nouveau mot de passe <span style="opacity:.6;">(laisser vide pour ne pas changer)</span></label>
+        <input class="form-control" type="password" id="edit-password" name="password" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-key"></i> Confirmer le nouveau mot de passe</label>
+        <input class="form-control" type="password" id="edit-confirm-password" name="confirm-password" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-shield-halved"></i> Privilèges</label>
+        <div class="privileges-grid">
+          <label class="privilege-toggle">
+            <span class="priv-label"><i class="fa-solid fa-download" style="color:var(--blue-light);margin-right:4px;"></i>Télécharger</span>
+            <input class="toggle-sw edit-priv" type="checkbox" name="privilege" value="download">
+          </label>
+          <label class="privilege-toggle">
+            <span class="priv-label"><i class="fa-solid fa-plus" style="color:var(--success);margin-right:4px;"></i>Ajouter</span>
+            <input class="toggle-sw edit-priv" type="checkbox" name="privilege" value="add">
+          </label>
+          <label class="privilege-toggle">
+            <span class="priv-label"><i class="fa-solid fa-trash" style="color:var(--danger);margin-right:4px;"></i>Supprimer</span>
+            <input class="toggle-sw edit-priv" type="checkbox" name="privilege" value="delete">
+          </label>
+          <label class="privilege-toggle">
+            <span class="priv-label"><i class="fa-solid fa-eye" style="color:var(--warning);margin-right:4px;"></i>Accès total</span>
+            <input class="toggle-sw edit-priv" type="checkbox" name="privilege" value="accessall">
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><i class="fa-solid fa-user-shield"></i> Type de compte</label>
+        <select class="form-control" id="edit-account-type" name="account-type">
+          <option value="user">Utilisateur</option>
+          <option value="admin">Administrateur</option>
+        </select>
+      </div>
+    </form>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('edit-modal')">Annuler</button>
+      <button class="btn-primary" style="width:auto;padding:8px 16px;" id="submit-edit-user-btn">
+        <i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i>Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)closeModal('delete-modal')">
+  <div class="modal-box">
+    <div class="modal-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);margin-right:8px;"></i>Confirmer la suppression</div>
+    <p style="font-size:13px;color:var(--white-dim);">Êtes-vous sûr de vouloir supprimer l'utilisateur <b id="delete-user-name" style="color:var(--white);"></b> ? Cette action est irréversible.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('delete-modal')">Annuler</button>
+      <button class="btn-danger" id="confirm-delete-user-btn">
+        <i class="fa-solid fa-trash" style="margin-right:6px;"></i>Supprimer
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Live search ─────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('user-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.toLowerCase();
+        document.querySelectorAll('.user-card').forEach(card => {
+          const haystack = card.dataset.name + ' ' + card.dataset.email + ' ' + card.dataset.service;
+          card.style.display = haystack.includes(q) ? '' : 'none';
+        });
+      });
+    }
+  });
+
+  // ── Edit user modal ──────────────────────────────────────────
+  const SERVICES = [
+    "Service Technique navigation - CNS",
+    "Service Technique navigation - infrastructure & électricité",
+    "Service navigation - control aérien",
+    "Service navigation - SLIA",
+    "Service SSQE",
+    "Service d'exploitation aéroportuaire",
+    "Section ressources",
+    "Direction",
+    "Autre"
+  ];
+
+  function openEditUser(btn) {
+    const card = btn.closest('.user-card');
+    const u = JSON.parse(card.dataset.user);
+
+    document.getElementById('edit-pseudo').value    = u.pseudo || '';
+    document.getElementById('edit-email').value     = u.mail || '';
+    document.getElementById('edit-function').value  = u.fonction || '';
+    document.getElementById('edit-password').value  = '';
+    document.getElementById('edit-confirm-password').value = '';
+    document.getElementById('edit-account-type').value = u.role || 'user';
+
+    const svcSelect = document.getElementById('edit-service');
+    svcSelect.value = u.service || '';
+
+    document.querySelectorAll('.edit-priv').forEach(cb => {
+      cb.checked = (u.privileges || []).includes(cb.value);
+    });
+
+    // Point the form action at the correct user id
+    const form = document.getElementById('edit-user-form');
+    form.action = `/users/edit/${u.id}`;
+
+    openModal('edit-modal');
+  }
+
+  document.getElementById('submit-edit-user-btn').addEventListener('click', () => {
+    document.getElementById('edit-user-form').submit();
+  });
+
+  // ── Delete user modal ────────────────────────────────────────
+  let userFormToDelete = null;
+
+  function confirmDeleteUser(btn) {
+    const form = btn.closest('.delete-user-form');
+    userFormToDelete = form;
+    document.getElementById('delete-user-name').textContent = form.dataset.name;
+    openModal('delete-modal');
+  }
+
+  document.getElementById('confirm-delete-user-btn').addEventListener('click', () => {
+    if (userFormToDelete) {
+      userFormToDelete.removeAttribute('onsubmit');
+      userFormToDelete.submit();
+    }
+  });
+</script>
+{% endblock %}

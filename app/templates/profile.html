@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Mon Profil — ONDA Essaouira{% endblock %}
+
+{% block content %}
+<div class="page-title">Mon Profil</div>
+
+<div style="display:grid;grid-template-columns:260px 1fr;gap:16px;max-width:900px;">
+
+  <!-- Identity card -->
+  <div class="glass-card" style="padding:24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;">
+    <div style="width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,var(--blue),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;">
+      {{ current_user.initials }}
+    </div>
+    <div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;">{{ current_user.pseudo }}</div>
+      <div style="font-size:12px;color:var(--white-dim);margin-top:2px;">{{ current_user.mail or 'Aucun email' }}</div>
+    </div>
+    <span class="role-badge {{ current_user.role }}" style="font-size:12px;padding:4px 12px;">
+      {{ 'Administrateur' if current_user.is_admin else 'Utilisateur' }}
+    </span>
+    <div style="width:100%;border-top:1px solid var(--border);padding-top:14px;text-align:left;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Informations</div>
+      <div style="font-size:12px;color:var(--white-dim);margin-bottom:6px;">
+        <i class="fa-solid fa-briefcase" style="color:var(--blue-light);margin-right:6px;width:14px;"></i>
+        {{ current_user.fonction or '—' }}
+      </div>
+      <div style="font-size:12px;color:var(--white-dim);margin-bottom:6px;">
+        <i class="fa-solid fa-people-group" style="color:var(--blue-light);margin-right:6px;width:14px;"></i>
+        {{ current_user.service or '—' }}
+      </div>
+    </div>
+    <div style="width:100%;border-top:1px solid var(--border);padding-top:14px;text-align:left;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Privilèges</div>
+      {% set priv_labels = {"download": ("fa-download","var(--blue-light)","Télécharger"), "add": ("fa-plus","var(--success)","Ajouter"), "delete": ("fa-trash","var(--danger)","Supprimer"), "accessall": ("fa-eye","var(--warning)","Accès total")} %}
+      {% if current_user.is_admin %}
+        <div style="font-size:12px;color:var(--white-dim);"><i class="fa-solid fa-star" style="color:var(--accent);margin-right:6px;"></i>Tous les privilèges (Admin)</div>
+      {% elif current_user.privileges %}
+        {% for p in current_user.privileges %}
+          {% if p in priv_labels %}
+          <div style="font-size:12px;color:var(--white-dim);margin-bottom:4px;">
+            <i class="fa-solid {{ priv_labels[p][0] }}" style="color:{{ priv_labels[p][1] }};margin-right:6px;width:14px;"></i>{{ priv_labels[p][2] }}
+          </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div style="font-size:12px;color:var(--white-dim);">Aucun privilège assigné</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Edit form -->
+  <div class="glass-card" style="padding:24px;">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;color:var(--accent);margin-bottom:18px;text-transform:uppercase;">
+      <i class="fa-solid fa-pen-to-square" style="margin-right:8px;"></i>Modifier mes informations
+    </div>
+    <form action="{{ url_for('profile.update_profile') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label><i class="fa-solid fa-user"></i> Pseudo</label>
+          <input class="form-control" type="text" value="{{ current_user.pseudo }}" disabled
+                 style="opacity:0.5;cursor:not-allowed;" title="Le pseudo ne peut être modifié que par un administrateur.">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-envelope"></i> Email</label>
+          <input class="form-control" type="email" name="email" value="{{ current_user.mail or '' }}" placeholder="nom@onda.ma">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-briefcase"></i> Fonction</label>
+          <input class="form-control" type="text" name="function" value="{{ current_user.fonction or '' }}" placeholder="Ex: Contrôleur Aérien">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label><i class="fa-solid fa-people-group"></i> Service</label>
+          <input class="form-control" type="text" value="{{ current_user.service or '' }}" disabled
+                 style="opacity:0.5;cursor:not-allowed;" title="Le service ne peut être modifié que par un administrateur.">
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:20px 0;padding-top:20px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;color:var(--accent);margin-bottom:14px;text-transform:uppercase;">
+          <i class="fa-solid fa-key" style="margin-right:8px;"></i>Changer le mot de passe <span style="font-weight:400;font-size:11px;opacity:.7;">(laisser vide pour ne pas changer)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div class="form-group" style="grid-column:1/-1;">
+            <label><i class="fa-solid fa-lock"></i> Mot de passe actuel</label>
+            <input class="form-control" type="password" name="current-password" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-lock-open"></i> Nouveau mot de passe</label>
+            <input class="form-control" type="password" name="new-password" placeholder="••••••••" minlength="6">
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-lock-open"></i> Confirmer</label>
+            <input class="form-control" type="password" name="confirm-password" placeholder="••••••••">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" style="max-width:220px;">
+        <i class="fa-solid fa-floppy-disk" style="margin-right:8px;"></i>Enregistrer les modifications
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

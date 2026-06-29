@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Messagerie — ONDA Essaouira{% endblock %}
+
+{% block content %}
+<div class="page-title">Messagerie Interne</div>
+
+<div id="chat-layout">
+  <!-- Contacts list -->
+  <div class="chat-list-panel">
+    <div class="panel-toolbar">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Rechercher…" oninput="filterChats(this.value)">
+      </div>
+    </div>
+    <div class="chat-list" id="chat-list">
+      {% if contacts %}
+        {% for c in contacts %}
+        <div class="chat-item" data-id="{{ c.id }}" data-name="{{ c.pseudo }}" data-initials="{{ c.initials }}" onclick="openChat(this)">
+          <div class="chat-avatar">
+            {{ c.initials }}
+          </div>
+          <div class="chat-item-info">
+            <div class="chat-item-name">{{ c.pseudo }}</div>
+            <div class="chat-item-preview">{{ c.fonction or c.service or '' }}</div>
+          </div>
+          {% if c.unread > 0 %}
+          <div class="unread-count" data-badge-for="{{ c.id }}">{{ c.unread }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state"><i class="fa-solid fa-users-slash"></i><p>Aucun autre utilisateur</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chat area -->
+  <div class="chat-main-panel">
+    <div class="chat-header" id="chat-header-area">
+      <div style="display:flex;align-items:center;gap:10px;color:var(--white-dim);">
+        <i class="fa-solid fa-comments" style="font-size:20px;"></i>
+        <span style="font-size:13px;">Sélectionnez une conversation</span>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+      <div class="empty-state">
+        <i class="fa-solid fa-paper-plane"></i>
+        <p>Choisissez un contact pour démarrer une conversation</p>
+      </div>
+    </div>
+
+    <div class="chat-input-area" id="chat-input-zone" style="display:none;">
+      <button class="btn-attach" title="Joindre un fichier" onclick="showToast('Fonctionnalité bientôt disponible','info')">
+        <i class="fa-solid fa-paperclip"></i>
+      </button>
+      <textarea class="chat-input" id="msg-input" placeholder="Écrire un message…" rows="1"></textarea>
+      <button class="btn-send" id="send-btn" title="Envoyer">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const MY_INITIALS = {{ current_user.initials|tojson }};
+  let activeChatId = null;
+  let pollInterval = null;
+
+  function filterChats(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('.chat-item').forEach(item => {
+      const name = (item.dataset.name || '').toLowerCase();
+      item.style.display = name.includes(q) ? '' : 'none';
+    });
+  }
+
+  function openChat(item) {
+    activeChatId = item.dataset.id;
+    const name = item.dataset.name;
+    const initials = item.dataset.initials;
+
+    document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+
+    // Clear unread badge for this contact
+    const badge = item.querySelector('.unread-count');
+    if (badge) badge.remove();
+
+    document.getElementById('chat-header-area').innerHTML = `
+      <div class="chat-avatar" style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;flex-shrink:0;font-size:14px;">
+        ${initials}
+      </div>
+      <div class="chat-header-info">
+        <div class="name">${name}</div>
+      </div>
+    `;
+
+    document.getElementById('chat-input-zone').style.display = 'flex';
+    loadMessages();
+
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(loadMessages, 4000);
+  }
+
+  function loadMessages() {
+    if (!activeChatId) return;
+    fetch(`/chat/messages/${activeChatId}`)
+      .then(r => r.json())
+      .then(messages => renderMessages(messages))
+      .catch(() => {});
+  }
+
+  function renderMessages(messages) {
+    const container = document.getElementById('chat-messages');
+    if (!messages.length) {
+      container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-comments"></i><p>Démarrez la conversation</p></div>`;
+      return;
+    }
+
+    const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 40;
+
+    container.innerHTML = messages.map(m => {
+      const time = new Date(m.created_at).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+      const initials = m.mine ? MY_INITIALS : document.querySelector('.chat-item.active')?.dataset.initials || '?';
+      return `
+        <div class="msg-row${m.mine ? ' mine' : ''}">
+          <div class="msg-avatar">${initials}</div>
+          <div>
+            <div class="msg-bubble">${escapeHtml(m.content)}</div>
+            <div class="msg-time">${time}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (wasAtBottom) container.scrollTop = container.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function sendMessage() {
+    if (!activeChatId) return;
+    const input = document.getElementById('msg-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    fetch('/chat/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({receiver_id: activeChatId, content})
+    })
+      .then(r => r.json())
+      .then(() => {
+        input.value = '';
+        input.style.height = 'auto';
+        loadMessages();
+      })
+      .catch(() => showToast('Erreur lors de l\'envoi du message.', 'error'));
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const sendBtn = document.getElementById('send-btn');
+    const msgInput = document.getElementById('msg-input');
+
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (msgInput) {
+      msgInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+      msgInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+      });
+    }
+  });
+</script>
+{% endblock %}
