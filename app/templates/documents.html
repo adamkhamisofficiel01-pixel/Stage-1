@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Documents — ONDA Essaouira{% endblock %}
+
+{% block content %}
+<div class="page-title">Bibliothèque Documentaire</div>
+
+<div class="doc-layout">
+  <div class="doc-tabs-header">
+    <div class="doc-tab-btn active" onclick="switchTab1(event,'show-doc')"><i class="fa-solid fa-folder-open" style="margin-right:6px;"></i>Tous les documents</div>
+    {% if current_user.has_privilege('add') %}
+    <div class="doc-tab-btn" onclick="switchTab1(event,'add-docc')"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Ajouter un document</div>
+    {% endif %}
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="show-doc" class="doc-content-panel active">
+    <div class="doc-header-card">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ONDA">
+      <div>
+        <div class="doc-org-name">Office National des Aéroports</div>
+        <div class="doc-org-sub">Aéroport Essaouira Mogador — Bibliothèque des documents internes</div>
+      </div>
+    </div>
+
+    <div class="doc-filters">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="search-doc" placeholder="Rechercher par titre ou code…">
+      </div>
+      <select class="filter-select" id="service-filter">
+        <option value="">Tous les services</option>
+        <option value="Service Technique navigation - CNS">STN - CNS</option>
+        <option value="Service Technique navigation - infrastructure & électricité">STN - Infrastructure</option>
+        <option value="Service navigation - control aérien">SN - Contrôle Aérien</option>
+        <option value="Service navigation - SLIA">SN - SLIA</option>
+        <option value="Service SSQE">Service SSQE</option>
+        <option value="Service d'exploitation aéroportuaire">Service d'exploitation</option>
+        <option value="Section ressources">Section Ressources</option>
+        <option value="public">Public</option>
+      </select>
+    </div>
+
+    <div class="doc-grid" id="doc-grid">
+      {% if documents %}
+        {% for d in documents %}
+        <div class="doc-card" data-title="{{ d.titre|lower }}" data-code="{{ (d.code or '')|lower }}" data-service="{{ d.destinataire or '' }}"
+             onclick="viewDoc(this)"
+             data-info='{{ {"titre": d.titre, "code": d.code, "date": d.date, "type": d.type_doc, "pilote": d.pilote, "service": d.destinataire, "fournisseur": d.fournisseur, "classement": d.classement, "id": d.id, "has_file": (d.file_path is not none)}|tojson }}'>
+          <div class="doc-card-icon {{ d.file_type or 'pdf' }}"><i class="fa-solid fa-file-{{ d.icon_suffix }}"></i></div>
+          <div class="doc-card-title">{{ d.titre }}</div>
+          <div class="doc-card-meta">{{ d.code or '—' }} — {{ d.date or '—' }} — <span style="color:{{ 'var(--blue-light)' if d.type_doc == 'numerique' else 'var(--warning)' }};">{{ 'Numérique' if d.type_doc == 'numerique' else 'Papier' }}</span></div>
+          <div class="doc-card-footer">
+            <span class="doc-service-badge" title="{{ d.destinataire or '' }}">{{ d.destinataire or '—' }}</span>
+            <div style="display:flex;gap:6px;">
+              {% if current_user.has_privilege('download') and d.file_path %}
+              <a class="btn-dl" title="Télécharger" href="{{ url_for('documents.download_document', doc_id=d.id) }}" onclick="event.stopPropagation();"><i class="fa-solid fa-download"></i></a>
+              {% endif %}
+              {% if current_user.has_privilege('delete') %}
+              <button type="button" class="btn-dl btn-dl-danger" title="Supprimer" onclick="event.stopPropagation(); confirmDeleteDoc('{{ d.id }}', {{ d.titre|tojson }});"><i class="fa-solid fa-trash"></i></button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-folder-open"></i><p>Aucun document trouvé</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ADD VIEW -->
+  {% if current_user.has_privilege('add') %}
+  <div id="add-docc" class="doc-content-panel">
+    <div id="add-doc-form-wrap">
+      <form id="add-doc-form" action="{{ url_for('documents.add_document') }}" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label><i class="fa-solid fa-heading"></i> Titre du document *</label>
+            <input class="form-control" type="text" id="doc-title" name="doc-title" placeholder="Ex: Rapport annuel 2024" required>
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-hashtag"></i> Code *</label>
+            <input class="form-control" type="text" id="doc-code" name="doc-code" placeholder="Ex: DOC-001" required>
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-user-tie"></i> Pilote</label>
+            <input class="form-control" type="text" id="doc-pilote" name="doc-pilote" placeholder="Ex: P0R44">
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-calendar"></i> Date *</label>
+            <input class="form-control" type="date" id="doc-date" name="doc-date" required>
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-tag"></i> Type de document</label>
+            <select class="form-control" id="doc-type" name="doc-type">
+              <option value="numerique">Numérique</option>
+              <option value="papier">Papier</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-industry"></i> Fournisseur</label>
+            <input class="form-control" type="text" id="doc-fournisseur" name="doc-fournisseur" placeholder="Ex: Chef de service technique">
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-people-group"></i> Destinataire</label>
+            <select class="form-control" id="doc-dest" name="doc-dest">
+              <option value="Service Technique navigation - CNS">STN - CNS</option>
+              <option value="Service Technique navigation - infrastructure & électricité">STN - Infrastructure & Électricité</option>
+              <option value="Service navigation - control aérien">SN - Contrôle Aérien</option>
+              <option value="Service navigation - SLIA">SN - SLIA</option>
+              <option value="Service SSQE">Service SSQE</option>
+              <option value="Service d'exploitation aéroportuaire">Service d'exploitation</option>
+              <option value="Section ressources">Section Ressources</option>
+              <option value="public">Public</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label><i class="fa-solid fa-folder"></i> Lieu de classement</label>
+            <input class="form-control" type="text" id="doc-class" name="doc-class" placeholder="Ex: Armoire A – Dossier 1">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px;">
+          <label for="doc-file"><i class="fa-solid fa-paperclip"></i> Fichier du document</label>
+          <div class="file-drop-area">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <p>Glissez-déposez votre fichier ici ou cliquez pour parcourir</p>
+            <input type="file" id="doc-file" name="doc-file" title="Fichier du document" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="max-width:300px;"><i class="fa-solid fa-plus" style="margin-right:8px;"></i>Ajouter le document</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- View doc modal -->
+<div class="modal-overlay" id="view-doc-modal" onclick="if(event.target===this)closeModal('view-doc-modal')">
+  <div class="modal-box" style="width:500px;">
+    <div class="modal-title"><i class="fa-solid fa-file-lines" style="color:var(--blue-light);margin-right:8px;"></i><span id="view-doc-title"></span></div>
+    <div id="view-doc-body"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('view-doc-modal')">Fermer</button>
+      {% if current_user.has_privilege('delete') %}
+      <button class="btn-danger" id="view-doc-delete" style="width:auto;padding:8px 16px;display:none;">
+        <i class="fa-solid fa-trash" style="margin-right:6px;"></i>Supprimer
+      </button>
+      {% endif %}
+      <a class="btn-primary" id="view-doc-download" style="width:auto;padding:8px 16px;text-decoration:none;display:none;" href="#">
+        <i class="fa-solid fa-download" style="margin-right:6px;"></i>Télécharger
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-doc-modal" onclick="if(event.target===this)closeModal('delete-doc-modal')">
+  <div class="modal-box">
+    <div class="modal-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);margin-right:8px;"></i>Confirmer la suppression</div>
+    <p style="font-size:13px;color:var(--white-dim);">Êtes-vous sûr de vouloir supprimer le document <b id="delete-doc-name" style="color:var(--white);"></b> ? Cette action est irréversible et supprimera également le fichier joint.</p>
+    <form id="delete-doc-form" method="post" action="#">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    </form>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('delete-doc-modal')">Annuler</button>
+      <button class="btn-danger" id="confirm-delete-doc-btn">
+        <i class="fa-solid fa-trash" style="margin-right:6px;"></i>Supprimer
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const canDownload = {{ current_user.has_privilege('download')|tojson }};
+  const canDelete = {{ current_user.has_privilege('delete')|tojson }};
+
+  function viewDoc(card) {
+    const d = JSON.parse(card.dataset.info);
+    document.getElementById('view-doc-title').textContent = d.titre;
+    document.getElementById('view-doc-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="info-item"><div class="label">Code</div><div class="value">${d.code || '—'}</div></div>
+        <div class="info-item"><div class="label">Date</div><div class="value">${d.date || '—'}</div></div>
+        <div class="info-item"><div class="label">Type</div><div class="value">${d.type === 'numerique' ? 'Numérique' : 'Papier'}</div></div>
+        <div class="info-item"><div class="label">Pilote</div><div class="value">${d.pilote || '—'}</div></div>
+        <div class="info-item" style="grid-column:1/-1;"><div class="label">Service destinataire</div><div class="value" style="font-size:13px;">${d.service || '—'}</div></div>
+        <div class="info-item"><div class="label">Fournisseur</div><div class="value" style="font-size:13px;">${d.fournisseur || '—'}</div></div>
+        <div class="info-item"><div class="label">Classement</div><div class="value" style="font-size:13px;">${d.classement || '—'}</div></div>
+      </div>
+    `;
+    const dlBtn = document.getElementById('view-doc-download');
+    if (canDownload && d.has_file) {
+      dlBtn.href = `/documents/download/${d.id}`;
+      dlBtn.style.display = 'inline-flex';
+    } else {
+      dlBtn.style.display = 'none';
+    }
+    const delBtn = document.getElementById('view-doc-delete');
+    if (delBtn) {
+      if (canDelete) {
+        delBtn.style.display = 'inline-flex';
+        delBtn.onclick = () => {
+          closeModal('view-doc-modal');
+          confirmDeleteDoc(d.id, d.titre);
+        };
+      } else {
+        delBtn.style.display = 'none';
+      }
+    }
+    openModal('view-doc-modal');
+  }
+
+  // ── Delete document ──────────────────────────────────────────
+  function confirmDeleteDoc(docId, docTitle) {
+    document.getElementById('delete-doc-name').textContent = docTitle;
+    document.getElementById('delete-doc-form').action = `/documents/delete/${docId}`;
+    openModal('delete-doc-modal');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('confirm-delete-doc-btn');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        document.getElementById('delete-doc-form').submit();
+      });
+    }
+
+    const searchInput = document.getElementById('search-doc');
+    const serviceFilter = document.getElementById('service-filter');
+
+    function applyFilters() {
+      const q = (searchInput?.value || '').toLowerCase();
+      const svc = serviceFilter?.value || '';
+      document.querySelectorAll('#doc-grid .doc-card').forEach(card => {
+        const matchesText = card.dataset.title.includes(q) || card.dataset.code.includes(q);
+        const matchesService = !svc || card.dataset.service === svc;
+        card.style.display = (matchesText && matchesService) ? '' : 'none';
+      });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
+    if (serviceFilter) serviceFilter.addEventListener('change', applyFilters);
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Accueil — ONDA Essaouira{% endblock %}
+
+{% block content %}
+<div class="page-title">Aéroport Essaouira Mogador</div>
+
+<div id="accueil-layout">
+  <!-- Slideshow -->
+  <div id="diaporama">
+    <img id="slide" src="{{ url_for('static', filename='images/im1.jpg') }}" alt="Vue aéroport">
+    <div class="slide-overlay"></div>
+    <div class="slide-controls"></div>
+  </div>
+
+  <!-- Info tabs -->
+  <div class="section-container">
+    <div class="tabs-header">
+      <div class="tab-btn active" onclick="switchTab(event,'section1')">Présentation</div>
+      <div class="tab-btn" onclick="switchTab(event,'section2')">Fiche Technique</div>
+      <div class="tab-btn" onclick="switchTab(event,'section3')">Compagnies</div>
+    </div>
+    <div class="tabs-content">
+      <div id="section1" class="content-panel active">
+        <p>Situé à 17 km au sud-est d'Essaouira, l'aéroport Mogador a été inauguré en <b>1998</b> et modernisé en <b>2010</b> avec un nouveau terminal. Il joue un rôle clé dans le développement touristique de la région et accompagne la station balnéaire Mogador du plan Azur.</p>
+        <div class="info-grid">
+          <div class="info-item"><div class="label">Superficie terminal</div><div class="value">3 000 m²</div></div>
+          <div class="info-item"><div class="label">Capacité annuelle</div><div class="value">300 000 pax</div></div>
+          <div class="info-item"><div class="label">Capacité simultanée</div><div class="value">2 avions</div></div>
+          <div class="info-item"><div class="label">Inauguré</div><div class="value">1998</div></div>
+        </div>
+        <p style="margin-top:10px;font-size:12px;"><i class="fa-solid fa-location-dot" style="color:var(--blue-light);margin-right:6px;"></i>BP 131, Essaouira Mogador &nbsp;|&nbsp; <i class="fa-solid fa-phone" style="color:var(--blue-light);margin-right:6px;"></i>05 24 47 67 04</p>
+      </div>
+
+      <div id="section2" class="content-panel">
+        <ul class="spec-list">
+          <li><span class="spec-key">Code ICAO</span><span class="spec-val">GMMI</span></li>
+          <li><span class="spec-key">Code IATA</span><span class="spec-val">ESU</span></li>
+          <li><span class="spec-key">Altitude</span><span class="spec-val">105 m / 345 ft</span></li>
+          <li><span class="spec-key">Longueur piste</span><span class="spec-val">2 800 m</span></li>
+          <li><span class="spec-key">Largeur piste</span><span class="spec-val">45 m</span></li>
+          <li><span class="spec-key">Type de piste</span><span class="spec-val">Asphaltée</span></li>
+          <li><span class="spec-key">Orientation piste</span><span class="spec-val">07/25</span></li>
+          <li><span class="spec-key">Catégorie OACI</span><span class="spec-val">4C</span></li>
+          <li><span class="spec-key">Catégorie SSLIA</span><span class="spec-val">Catégorie 6</span></li>
+        </ul>
+      </div>
+
+      <div id="section3" class="content-panel">
+        <div class="airline-grid">
+          <div class="airline-item"><div class="airline-icon">✈</div><div><div class="airline-name">Royal Air Maroc</div><div class="airline-routes">Casablanca (CMN)</div></div></div>
+          <div class="airline-item"><div class="airline-icon">✈</div><div><div class="airline-name">easyJet</div><div class="airline-routes">London Gatwick, Paris CDG</div></div></div>
+          <div class="airline-item"><div class="airline-icon">✈</div><div><div class="airline-name">Ryanair</div><div class="airline-routes">Madrid, Brussels</div></div></div>
+          <div class="airline-item"><div class="airline-icon">✈</div><div><div class="airline-name">Transavia</div><div class="airline-routes">Amsterdam, Lyon</div></div></div>
+          <div class="airline-item"><div class="airline-icon">✈</div><div><div class="airline-name">Air Arabia Maroc</div><div class="airline-routes">Casablanca (CMN)</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel: latest documents -->
+  <div id="d-container">
+    <div class="panel-header"><i class="fa-solid fa-file-lines" style="margin-right:8px;"></i>Derniers documents</div>
+    <div style="overflow-y:auto;flex:1;">
+      {% if documents %}
+      <table class="flight-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Code</th>
+            <th>Titre</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+          <tr class="clickable-doc-row" onclick="viewDocFromHome(this)"
+              data-info='{{ {"titre": doc.titre, "code": doc.code, "date": doc.date, "type": doc.type_doc, "pilote": doc.pilote, "service": doc.destinataire, "fournisseur": doc.fournisseur, "classement": doc.classement, "id": doc.id, "has_file": (doc.file_path is not none)}|tojson }}'>
+            <td style="width:24px;"><i class="fa-solid fa-file-{{ doc.icon_suffix }}" style="color:var(--blue-light);"></i></td>
+            <td><b>{{ doc.code or '—' }}</b></td>
+            <td>{{ doc.titre }}</td>
+            <td>{{ doc.date or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <i class="fa-solid fa-folder-open"></i>
+        <p>Aucun document disponible</p>
+      </div>
+      {% endif %}
+    </div>
+    <div style="padding:10px 12px;border-top:1px solid var(--border);font-size:11px;">
+      <a href="{{ url_for('documents.list_documents') }}" style="color:var(--accent);text-decoration:none;">
+        <i class="fa-solid fa-arrow-right" style="margin-right:6px;"></i>Voir tous les documents
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- View doc modal (same pattern as the Documents page) -->
+<div class="modal-overlay" id="view-doc-modal" onclick="if(event.target===this)closeModal('view-doc-modal')">
+  <div class="modal-box" style="width:500px;">
+    <div class="modal-title"><i class="fa-solid fa-file-lines" style="color:var(--blue-light);margin-right:8px;"></i><span id="view-doc-title"></span></div>
+    <div id="view-doc-body"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('view-doc-modal')">Fermer</button>
+      <a class="btn-primary" id="view-doc-download" style="width:auto;padding:8px 16px;text-decoration:none;display:none;" href="#">
+        <i class="fa-solid fa-download" style="margin-right:6px;"></i>Télécharger
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Live clock (purely cosmetic)
+  function updateClock() {
+    const el = document.getElementById('clock');
+    if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── Clickable "Derniers documents" rows ─────────────────────
+  const canDownloadHome = {{ current_user.has_privilege('download')|tojson }};
+
+  function viewDocFromHome(row) {
+    const d = JSON.parse(row.dataset.info);
+    document.getElementById('view-doc-title').textContent = d.titre;
+    document.getElementById('view-doc-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="info-item"><div class="label">Code</div><div class="value">${d.code || '—'}</div></div>
+        <div class="info-item"><div class="label">Date</div><div class="value">${d.date || '—'}</div></div>
+        <div class="info-item"><div class="label">Type</div><div class="value">${d.type === 'numerique' ? 'Numérique' : 'Papier'}</div></div>
+        <div class="info-item"><div class="label">Pilote</div><div class="value">${d.pilote || '—'}</div></div>
+        <div class="info-item" style="grid-column:1/-1;"><div class="label">Service destinataire</div><div class="value" style="font-size:13px;">${d.service || '—'}</div></div>
+        <div class="info-item"><div class="label">Fournisseur</div><div class="value" style="font-size:13px;">${d.fournisseur || '—'}</div></div>
+        <div class="info-item"><div class="label">Classement</div><div class="value" style="font-size:13px;">${d.classement || '—'}</div></div>
+      </div>
+    `;
+    const dlBtn = document.getElementById('view-doc-download');
+    if (canDownloadHome && d.has_file) {
+      dlBtn.href = `/documents/download/${d.id}`;
+      dlBtn.style.display = 'inline-flex';
+    } else {
+      dlBtn.style.display = 'none';
+    }
+    openModal('view-doc-modal');
+  }
+</script>
+{% endblock %}

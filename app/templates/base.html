@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="{{ url_for('static', filename='js/jscript.js') }}" defer></script>
+  <title>{% block title %}ONDA Essaouira{% endblock %}</title>
+</head>
+<body>
+  <header>
+    <img id="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ONDA">
+    <div id="header-content">
+      <a class="header-icon-btn" href="{{ url_for('documents.list_documents') }}" title="Documents"><i class="fa-solid fa-file"></i></a>
+      <a class="header-icon-btn" href="{{ url_for('chat.chat_page') }}" title="Messagerie"><i class="fa-solid fa-envelope"></i></a>
+      <a href="{{ url_for('profile.view_profile') }}" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+        <img id="profile-picture" src="{{ url_for('static', filename='images/profile.png') }}" alt="Photo de profil">
+        <span class="username">{{ current_user.pseudo }}</span>
+      </a>
+      <a class="header-icon-btn" href="{{ url_for('auth.logout') }}" title="Déconnexion"><i class="fa-solid fa-right-from-bracket"></i></a>
+    </div>
+  </header>
+
+  <div id="container">
+    <nav id="bar">
+      <a class="iconconf{{ ' active' if request.blueprint == 'main' else '' }}" href="{{ url_for('main.dashboard') }}" data-tooltip="Accueil"><i class="fa-solid fa-house"></i></a>
+      {% if current_user.is_admin %}
+      <a class="iconconf{{ ' active' if request.blueprint == 'users' else '' }}" href="{{ url_for('users.list_users') }}" data-tooltip="Utilisateurs"><i class="fa-solid fa-users"></i></a>
+      {% endif %}
+      <a class="iconconf{{ ' active' if request.blueprint == 'documents' else '' }}" href="{{ url_for('documents.list_documents') }}" data-tooltip="Documents"><i class="fa-solid fa-folder"></i></a>
+      <a class="iconconf{{ ' active' if request.blueprint == 'chat' else '' }}" href="{{ url_for('chat.chat_page') }}" data-tooltip="Messagerie"><i class="fa-solid fa-comments"></i></a>
+    </nav>
+
+    <div id="page-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  {% block modals %}{% endblock %}
+
+  <div id="toast-container"></div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        {% for category, message in messages %}
+          showToast({{ message|tojson }}, {{ ('error' if category == 'danger' else category)|tojson }});
+        {% endfor %}
+      });
+    </script>
+    {% endif %}
+  {% endwith %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

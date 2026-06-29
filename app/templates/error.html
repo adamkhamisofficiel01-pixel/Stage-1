@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/connexion.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <title>Erreur {{ code }} — ONDA Essaouira</title>
+  <style>
+    .error-box { text-align: center; padding: 40px 32px; }
+    .error-code { font-family: 'Rajdhani', sans-serif; font-size: 64px; font-weight: 700; color: var(--blue); line-height: 1; }
+    .error-msg-text { color: var(--white-dim); margin: 16px 0 24px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="connexionContainer" style="height:auto;">
+    <div class="error-box">
+      <div class="error-code">{{ code }}</div>
+      <p class="error-msg-text">{{ message }}</p>
+      <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}" class="btn-login" style="display:inline-block;text-decoration:none;width:auto;padding:10px 24px;">
+        <i class="fa-solid fa-house" style="margin-right:8px;"></i>Retour à l'accueil
+      </a>
+    </div>
+  </div>
+</body>
+</html>
